@@ -1,0 +1,368 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode=light>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Elastic Search之Script熔断异常 - Ukza&#39;s blog</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="google" content="notranslate" />
+  <meta name="keywords" content=", Script熔断异常">
+  <meta name="description" content="背景客服突然反馈，检索某个sku需要多次才能出现结果。...">
+  <meta name="author" content="Ukza">
+  <link rel="icon" href="/images/icons/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="/images/icons/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/images/icons/apple-touch-icon.png" sizes="180x180">
+  <meta rel="mask-icon" href="/images/icons/stun-logo.svg" color="#333333">
+  
+    <meta rel="msapplication-TileImage" content="/images/icons/favicon-144x144.png">
+    <meta rel="msapplication-TileColor" content="#000000">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+
+  
+    
+<link rel="stylesheet" href="https://at.alicdn.com/t/font_1445822_p6ry5n7lrr.css">
+
+  
+
+  
+    
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css">
+
+  
+
+  
+    
+      
+        
+        
+<link rel="stylesheet" href="https://cdn.bootcss.com/highlight.js/9.18.1/styles/monokai-sublime.min.css" name="highlight-style" mode="light">
+
+      
+        
+        
+<link rel="stylesheet" href="https://cdn.bootcss.com/highlight.js/9.18.1/styles/tomorrow-night-bright.min.css" name="highlight-style" mode="dark">
+
+      
+  
+
+  <script>
+    var CONFIG = window.CONFIG || {};
+    var ZHAOO = window.ZHAOO || {};
+    CONFIG = {
+      isHome: false,
+      fancybox: true,
+      pjax: false,
+      loading: {
+        gif: '/images/theme/loading.gif',
+        lottie: ''
+      },
+      lazyload: {
+        enable: true,
+        only_post: 'false',
+        loading: {
+          gif: '/images/theme/loading.gif',
+          lottie: ''
+        }
+      },
+      donate: {
+        enable: false,
+        alipay: 'https://pic.izhaoo.com/alipay.jpg',
+        wechat: 'https://pic.izhaoo.com/wechat.jpg'
+      },
+      galleries: {
+        enable: true
+      },
+      fab: {
+        enable: true,
+        always_show: false
+      },
+      carrier: {
+        enable: true
+      },
+      daovoice: {
+        enable: false
+      },
+      preview: {
+        background: {
+          default: '',
+          api: ''
+        },
+        motto: {
+          default: '我在开了灯的床头下，想问问自己的心啊。',
+          typing: true,
+          api: 'https://v2.jinrishici.com/one.json',
+          data_contents: '["data","content"]'
+        },
+      },
+      qrcode: {
+        enable: false,
+        type: 'url',
+        image: 'https://pic.izhaoo.com/weapp-code.jpg',
+      },
+      toc: {
+        enable: true
+      },
+      scrollbar: {
+        type: 'simple'
+      },
+      notification: {
+        enable: false,
+        delay: 4500,
+        list: '',
+        page_white_list: '',
+        page_black_list: ''
+      },
+      search: {
+        enable: true,
+        path: 'search.xml'
+      }
+    }
+  </script>
+
+  
+
+  
+
+<meta name="generator" content="Hexo 7.0.0"></head>
+
+<body class="lock-screen">
+  <div class="loading" id="loading"></div>
+  
+    
+
+
+  <nav class="navbar">
+    <div class="left">
+      
+        <i class="iconfont iconhome j-navbar-back-home"></i>
+      
+      
+      
+        <i class="iconfont iconmoono" id="color-toggle" color-toggle="light"></i>
+      
+      
+        <i class="iconfont iconsearch j-navbar-search"></i>
+      
+    </div>
+    <div class="center">Elastic Search之Script熔断异常</div>
+    <div class="right">
+      <i class="iconfont iconmenu j-navbar-menu"></i>
+    </div>
+    
+  </nav>
+
+  
+  
+
+<nav class="menu">
+  <div class="menu-container">
+    <div class="menu-close">
+      <i class="iconfont iconbaseline-close-px"></i>
+    </div>
+    <ul class="menu-content"><li class="menu-item">
+        <a href="/ " class="underline "> 首页</a>
+      </li><li class="menu-item">
+        <a href="/tags/ " class="underline "> 标签</a>
+      </li><li class="menu-item">
+        <a href="/categories/ " class="underline "> 分类</a>
+      </li><li class="menu-item">
+        <a href="/about/ " class="underline "> 关于</a>
+      </li></ul>
+    
+      <div class="menu-copyright"><p>Powered by <a target="_blank" href="https://hexo.io">Hexo</a>  |  Theme - <a target="_blank" href="https://github.com/izhaoo/hexo-theme-zhaoo">zhaoo</a></p></div>
+    
+  </div>
+</nav>
+  <main id="main">
+  <div class="article-wrap">
+    <div class="row container">
+      <div class="col-xl-3"></div>
+      <div class="col-xl-6"><article class="article">
+  <div class="wrap">
+    <section class="head">
+  <img   class="lazyload" data-original="/images/galleries/20200718152122.jpg" src="data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQImWNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg=="  draggable="false">
+  <div class="head-mask">
+    <h1 class="head-title">Elastic Search之Script熔断异常</h1>
+    <div class="head-info">
+      <span class="post-info-item"><i class="iconfont iconcalendar"></i>十二月 01, 2023</span>
+      
+      <span class="post-info-item"><i class="iconfont iconfont-size"></i>16625</span>
+    </div>
+  </div>
+</section>
+    <section class="main">
+      <section class="content">
+        
+        <h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>客服突然反馈，检索某个sku需要多次才能出现结果。</p>
+<h3 id="排查思路-解决方案"><a href="#排查思路-解决方案" class="headerlink" title="排查思路&#x2F;解决方案"></a>排查思路&#x2F;解决方案</h3><p>1、这个sku处于下架状态，下架状态的sku是不允许检索的。结果查看数据处于上架状态，所以这个思路是错误的（×）</p>
+<p>2、增加日志，打印ES查询语句，并添加查询ES错误栈信息打印。日志打印后，发现ES查询正常，但是抛出了异常：Elasticsearch exception [type&#x3D;search_phase_execution_exception, reason&#x3D;all shards failed]，看到这个错误后发现是ES分片出现异常可能是ES节点状态处于不健康状态，因为最近是黑五网一，对ES的复杂请求要比之间的流量要大至少一倍，所以怀疑是对ES的访问负载过高导致ES节点处于不健康状态。结果登录控制台查看发现是节点处于绿色状态（健康状态），第一时间懵了，但是看到ES对Http请求中有部分出现50X的访问异常，立马查看日志，日志如下：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br></pre></td><td class="code"><pre><code class="hljs json"><span class="hljs-punctuation">[</span><span class="hljs-number">2023</span><span class="hljs-number">-11</span><span class="hljs-number">-21</span>T02<span class="hljs-punctuation">:</span><span class="hljs-number">25</span><span class="hljs-punctuation">:</span><span class="hljs-number">13</span><span class="hljs-punctuation">,</span><span class="hljs-number">005</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>WARN <span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>r.suppressed             <span class="hljs-punctuation">]</span> <span class="hljs-punctuation">[</span>ff1a084489778d82a0ccf314aef5df98<span class="hljs-punctuation">]</span> path<span class="hljs-punctuation">:</span> __PATH__ params<span class="hljs-punctuation">:</span> <span class="hljs-punctuation">&#123;</span>typed_keys=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span> max_concurrent_shard_requests=<span class="hljs-number">5</span><span class="hljs-punctuation">,</span> ignore_unavailable=<span class="hljs-literal"><span class="hljs-keyword">false</span></span><span class="hljs-punctuation">,</span> expand_wildcards=open<span class="hljs-punctuation">,</span> allow_no_indices=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span> ignore_throttled=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span> index=index_product_3<span class="hljs-punctuation">,</span> search_type=query_then_fetch<span class="hljs-punctuation">,</span> batched_reduce_size=<span class="hljs-number">512</span><span class="hljs-punctuation">,</span> ccs_minimize_roundtrips=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">&#125;</span><br><br>Failed to execute phase <span class="hljs-punctuation">[</span>query<span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> all shards failed; shardFailures <span class="hljs-punctuation">&#123;</span><span class="hljs-punctuation">[</span><span class="hljs-number">4</span>TJsxlKXT8io4YxAo1t3aw<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>index_product_3<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span><span class="hljs-number">0</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">:</span> RemoteTransportException<span class="hljs-punctuation">[</span><span class="hljs-punctuation">[</span><span class="hljs-number">1</span>f058616eb2ec8a3e231c3eee031132b<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>__IP__<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">]</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">]</span>; nested<span class="hljs-punctuation">:</span> GeneralScriptException<span class="hljs-punctuation">[</span>Failed to compile inline script <span class="hljs-punctuation">[</span> int sortIndex = <span class="hljs-number">0</span>;if (params._source.productCategoryVOList != <span class="hljs-literal"><span class="hljs-keyword">null</span></span> &amp;&amp; params._source.productCategoryVOList.size () &gt; <span class="hljs-number">0</span>) <span class="hljs-punctuation">&#123;</span>for(int i = <span class="hljs-number">0</span>;i&lt;params._source.productCategoryVOList.size();i++)<span class="hljs-punctuation">&#123;</span>if(params._source.productCategoryVOList.get(i).categoryId.equals(<span class="hljs-number">291</span>)  &amp;&amp;  params._source.productCategoryVOList.get(i).level &gt; sortIndex ) <span class="hljs-punctuation">&#123;</span> sortIndex =  params._source.productCategoryVOList.get(i).level;<span class="hljs-punctuation">&#125;</span><span class="hljs-punctuation">&#125;</span><span class="hljs-punctuation">&#125;</span> return sortIndex;<span class="hljs-punctuation">]</span> using lang <span class="hljs-punctuation">[</span>painless<span class="hljs-punctuation">]</span><span class="hljs-punctuation">]</span>; nested<span class="hljs-punctuation">:</span> CircuitBreakingException<span class="hljs-punctuation">[</span><span class="hljs-punctuation">[</span>script<span class="hljs-punctuation">]</span> Too many dynamic script compilations within<span class="hljs-punctuation">,</span> max<span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">]</span>; please use indexed<span class="hljs-punctuation">,</span> or scripts with parameters instead; this limit can be changed by the <span class="hljs-punctuation">[</span>script.context.number_sort.max_compilations_rate<span class="hljs-punctuation">]</span> setting<span class="hljs-punctuation">]</span>; <span class="hljs-punctuation">&#125;</span><br><br>	at org.elasticsearch.action.search.AbstractSearchAsyncAction.onPhaseFailure(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">568</span>)<br><br>	at org.elasticsearch.action.search.AbstractSearchAsyncAction.executeNextPhase(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">324</span>)<br><br>	at org.elasticsearch.action.search.AbstractSearchAsyncAction.onPhaseDone(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">603</span>)<br><br>	at org.elasticsearch.action.search.AbstractSearchAsyncAction.onShardFailure(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">400</span>)<br><br>	at org.elasticsearch.action.search.AbstractSearchAsyncAction.access$<span class="hljs-number">100</span>(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">70</span>)<br><br>	at org.elasticsearch.action.search.AbstractSearchAsyncAction$<span class="hljs-number">1.</span>onFailure(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">258</span>)<br><br>	at org.elasticsearch.action.search.SearchExecutionStatsCollector.onFailure(SearchExecutionStatsCollector.java<span class="hljs-punctuation">:</span><span class="hljs-number">73</span>)<br><br>	at org.elasticsearch.action.ActionListenerResponseHandler.handleException(ActionListenerResponseHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">59</span>)<br><br>	at org.elasticsearch.action.search.SearchTransportService$ConnectionCountingHandler.handleException(SearchTransportService.java<span class="hljs-punctuation">:</span><span class="hljs-number">408</span>)<br><br>	at org.elasticsearch.transport.TransportService$<span class="hljs-number">6.</span>handleException(TransportService.java<span class="hljs-punctuation">:</span><span class="hljs-number">640</span>)<br><br>	at org.elasticsearch.transport.TransportService$ContextRestoreResponseHandler.handleException(TransportService.java<span class="hljs-punctuation">:</span><span class="hljs-number">1181</span>)<br><br>	at org.elasticsearch.transport.InboundHandler.lambda$handleException$<span class="hljs-number">3</span>(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">277</span>)<br><br>	at org.elasticsearch.common.util.concurrent.EsExecutors$DirectExecutorService.execute(EsExecutors.java<span class="hljs-punctuation">:</span><span class="hljs-number">253</span>)<br><br>	at org.elasticsearch.transport.InboundHandler.handleException(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">275</span>)<br><br>	at org.elasticsearch.transport.InboundHandler.handlerResponseError(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">267</span>)<br><br>	at org.elasticsearch.transport.InboundHandler.messageReceived(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">131</span>)<br><br>	at org.elasticsearch.transport.InboundHandler.inboundMessage(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">89</span>)<br><br>	at org.elasticsearch.transport.TcpTransport.inboundMessage(TcpTransport.java<span class="hljs-punctuation">:</span><span class="hljs-number">700</span>)<br><br>	at org.elasticsearch.transport.InboundPipeline.forwardFragments(InboundPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">142</span>)<br><br>	at org.elasticsearch.transport.InboundPipeline.doHandleBytes(InboundPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">117</span>)<br><br>	at org.elasticsearch.transport.InboundPipeline.handleBytes(InboundPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">82</span>)<br><br>	at org.elasticsearch.transport.netty4.Netty4MessageChannelHandler.channelRead(Netty4MessageChannelHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">74</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">379</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">365</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">357</span>)<br><br>	at io.netty.handler.logging.LoggingHandler.channelRead(LoggingHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">271</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">379</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">365</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">357</span>)<br><br>	at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">1410</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">379</span>)<br><br>	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">365</span>)<br><br>	at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">919</span>)<br><br>	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java<span class="hljs-punctuation">:</span><span class="hljs-number">163</span>)<br><br>	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">714</span>)<br><br>	at io.netty.channel.nio.NioEventLoop.processSelectedKeysPlain(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">615</span>)<br><br>	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">578</span>)<br><br>	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">493</span>)<br><br>	at io.netty.util.concurrent.SingleThreadEventExecutor$<span class="hljs-number">4.</span>run(SingleThreadEventExecutor.java<span class="hljs-punctuation">:</span><span class="hljs-number">989</span>)<br><br>	at io.netty.util.internal.ThreadExecutorMap$<span class="hljs-number">2.</span>run(ThreadExecutorMap.java<span class="hljs-punctuation">:</span><span class="hljs-number">74</span>)<br><br>	at __PATH__(Thread.java<span class="hljs-punctuation">:</span><span class="hljs-number">829</span>)<br><br>Caused by<span class="hljs-punctuation">:</span> CircuitBreakingException<span class="hljs-punctuation">[</span><span class="hljs-punctuation">[</span>script<span class="hljs-punctuation">]</span> Too many dynamic script compilations within<span class="hljs-punctuation">,</span> max<span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">]</span>; please use indexed<span class="hljs-punctuation">,</span> or scripts with parameters instead; this limit can be changed by the <span class="hljs-punctuation">[</span>script.context.number_sort.max_compilations_rate<span class="hljs-punctuation">]</span> setting<span class="hljs-punctuation">]</span><br><br>	at org.elasticsearch.script.ScriptCache.checkCompilationLimit(ScriptCache.java<span class="hljs-punctuation">:</span><span class="hljs-number">179</span>)<br><br>	at org.elasticsearch.script.ScriptCache.lambda$compile$<span class="hljs-number">0</span>(ScriptCache.java<span class="hljs-punctuation">:</span><span class="hljs-number">109</span>)<br><br>	at org.elasticsearch.common.cache.Cache.computeIfAbsent(Cache.java<span class="hljs-punctuation">:</span><span class="hljs-number">433</span>)<br><br>	at org.elasticsearch.script.ScriptCache.compile(ScriptCache.java<span class="hljs-punctuation">:</span><span class="hljs-number">99</span>)<br><br>	at org.elasticsearch.script.ScriptService.compile(ScriptService.java<span class="hljs-punctuation">:</span><span class="hljs-number">384</span>)<br><br>	at org.elasticsearch.index.query.QueryShardContext.compile(QueryShardContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">401</span>)<br><br>	at org.elasticsearch.search.sort.ScriptSortBuilder.fieldComparatorSource(ScriptSortBuilder.java<span class="hljs-punctuation">:</span><span class="hljs-number">380</span>)<br><br>	at org.elasticsearch.search.sort.ScriptSortBuilder.build(ScriptSortBuilder.java<span class="hljs-punctuation">:</span><span class="hljs-number">312</span>)<br><br>	at org.elasticsearch.search.sort.SortBuilder.buildSort(SortBuilder.java<span class="hljs-punctuation">:</span><span class="hljs-number">159</span>)<br><br>	at org.elasticsearch.search.SearchService.parseSource(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">906</span>)<br><br>	at org.elasticsearch.search.SearchService.createContext(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">726</span>)<br><br>	at org.elasticsearch.search.SearchService.executeQueryPhase(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">428</span>)<br><br>	at org.elasticsearch.search.SearchService.access$<span class="hljs-number">500</span>(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">141</span>)<br><br>	at org.elasticsearch.search.SearchService$<span class="hljs-number">2.</span>lambda$onResponse$<span class="hljs-number">0</span>(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">401</span>)<br><br>	at org.elasticsearch.action.ActionRunnable.lambda$supply$<span class="hljs-number">0</span>(ActionRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">58</span>)<br><br>	at org.elasticsearch.action.ActionRunnable$<span class="hljs-number">2.</span>doRun(ActionRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">73</span>)<br><br>	at org.elasticsearch.common.util.concurrent.AbstractRunnable.run(AbstractRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">37</span>)<br><br>	at org.elasticsearch.common.util.concurrent.TimedRunnable.doRun(TimedRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">44</span>)<br><br>	at org.elasticsearch.common.util.concurrent.ThreadContext$ContextPreservingAbstractRunnable.doRun(ThreadContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">752</span>)<br><br>	at org.elasticsearch.common.util.concurrent.AbstractRunnable.run(AbstractRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">37</span>)<br><br>	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java<span class="hljs-punctuation">:</span><span class="hljs-number">1128</span>)<br><br>	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java<span class="hljs-punctuation">:</span><span class="hljs-number">628</span>)<br><br>	at java.lang.Thread.run(Thread.java<span class="hljs-punctuation">:</span><span class="hljs-number">829</span>)<br><br><span class="hljs-punctuation">[</span><span class="hljs-number">2023</span><span class="hljs-number">-11</span><span class="hljs-number">-21</span>T02<span class="hljs-punctuation">:</span><span class="hljs-number">25</span><span class="hljs-punctuation">:</span><span class="hljs-number">13</span><span class="hljs-punctuation">,</span><span class="hljs-number">005</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>WARN <span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>r.suppressed <span class="hljs-punctuation">]</span> <span class="hljs-punctuation">[</span>ff1a084489778d82a0ccf314aef5df98<span class="hljs-punctuation">]</span> path<span class="hljs-punctuation">:</span> __PATH__ params<span class="hljs-punctuation">:</span> <span class="hljs-punctuation">&#123;</span>typed_keys=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span> max_concurrent_shard_requests=<span class="hljs-number">5</span><span class="hljs-punctuation">,</span> ignore_unavailable=<span class="hljs-literal"><span class="hljs-keyword">false</span></span><span class="hljs-punctuation">,</span> expand_wildcards=open<span class="hljs-punctuation">,</span> allow_no_indices=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span> ignore_throttled=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span> index=index_product_3<span class="hljs-punctuation">,</span> search_type=query_then_fetch<span class="hljs-punctuation">,</span> batched_reduce_size=<span class="hljs-number">512</span><span class="hljs-punctuation">,</span> ccs_minimize_roundtrips=<span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">&#125;</span> Failed to execute phase <span class="hljs-punctuation">[</span>query<span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> all shards failed; shardFailures <span class="hljs-punctuation">&#123;</span><span class="hljs-punctuation">[</span><span class="hljs-number">4</span>TJsxlKXT8io4YxAo1t3aw<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>index_product_3<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span><span class="hljs-number">0</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">:</span> RemoteTransportException<span class="hljs-punctuation">[</span><span class="hljs-punctuation">[</span><span class="hljs-number">1</span>f058616eb2ec8a3e231c3eee031132b<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>__IP__<span class="hljs-punctuation">]</span><span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">]</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">]</span>; nested<span class="hljs-punctuation">:</span> GeneralScriptException<span class="hljs-punctuation">[</span>Failed to compile inline script <span class="hljs-punctuation">[</span> int sortIndex = <span class="hljs-number">0</span>;if (params._source.productCategoryVOList != <span class="hljs-literal"><span class="hljs-keyword">null</span></span> &amp;&amp; params._source.productCategoryVOList.size () &gt; <span class="hljs-number">0</span>) <span class="hljs-punctuation">&#123;</span>for(int i = <span class="hljs-number">0</span>;i&lt;params._source.productCategoryVOList.size();i++)<span class="hljs-punctuation">&#123;</span>if(params._source.productCategoryVOList.get(i).categoryId.equals(<span class="hljs-number">291</span>) &amp;&amp; params._source.productCategoryVOList.get(i).level &gt; sortIndex ) <span class="hljs-punctuation">&#123;</span> sortIndex = params._source.productCategoryVOList.get(i).level;<span class="hljs-punctuation">&#125;</span><span class="hljs-punctuation">&#125;</span><span class="hljs-punctuation">&#125;</span> return sortIndex;<span class="hljs-punctuation">]</span> using lang <span class="hljs-punctuation">[</span>painless<span class="hljs-punctuation">]</span><span class="hljs-punctuation">]</span>; nested<span class="hljs-punctuation">:</span> CircuitBreakingException<span class="hljs-punctuation">[</span><span class="hljs-punctuation">[</span>script<span class="hljs-punctuation">]</span> Too many dynamic script compilations within<span class="hljs-punctuation">,</span> max<span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">]</span>; please use indexed<span class="hljs-punctuation">,</span> or scripts with parameters instead; this limit can be changed by the <span class="hljs-punctuation">[</span>script.context.number_sort.max_compilations_rate<span class="hljs-punctuation">]</span> setting<span class="hljs-punctuation">]</span>; <span class="hljs-punctuation">&#125;</span> at org.elasticsearch.action.search.AbstractSearchAsyncAction.onPhaseFailure(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">568</span>) at org.elasticsearch.action.search.AbstractSearchAsyncAction.executeNextPhase(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">324</span>) at org.elasticsearch.action.search.AbstractSearchAsyncAction.onPhaseDone(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">603</span>) at org.elasticsearch.action.search.AbstractSearchAsyncAction.onShardFailure(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">400</span>) at org.elasticsearch.action.search.AbstractSearchAsyncAction.access$<span class="hljs-number">100</span>(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">70</span>) at org.elasticsearch.action.search.AbstractSearchAsyncAction$<span class="hljs-number">1.</span>onFailure(AbstractSearchAsyncAction.java<span class="hljs-punctuation">:</span><span class="hljs-number">258</span>) at org.elasticsearch.action.search.SearchExecutionStatsCollector.onFailure(SearchExecutionStatsCollector.java<span class="hljs-punctuation">:</span><span class="hljs-number">73</span>) at org.elasticsearch.action.ActionListenerResponseHandler.handleException(ActionListenerResponseHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">59</span>) at org.elasticsearch.action.search.SearchTransportService$ConnectionCountingHandler.handleException(SearchTransportService.java<span class="hljs-punctuation">:</span><span class="hljs-number">408</span>) at org.elasticsearch.transport.TransportService$<span class="hljs-number">6.</span>handleException(TransportService.java<span class="hljs-punctuation">:</span><span class="hljs-number">640</span>) at org.elasticsearch.transport.TransportService$ContextRestoreResponseHandler.handleException(TransportService.java<span class="hljs-punctuation">:</span><span class="hljs-number">1181</span>) at org.elasticsearch.transport.InboundHandler.lambda$handleException$<span class="hljs-number">3</span>(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">277</span>) at org.elasticsearch.common.util.concurrent.EsExecutors$DirectExecutorService.execute(EsExecutors.java<span class="hljs-punctuation">:</span><span class="hljs-number">253</span>) at org.elasticsearch.transport.InboundHandler.handleException(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">275</span>) at org.elasticsearch.transport.InboundHandler.handlerResponseError(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">267</span>) at org.elasticsearch.transport.InboundHandler.messageReceived(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">131</span>) at org.elasticsearch.transport.InboundHandler.inboundMessage(InboundHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">89</span>) at org.elasticsearch.transport.TcpTransport.inboundMessage(TcpTransport.java<span class="hljs-punctuation">:</span><span class="hljs-number">700</span>) at org.elasticsearch.transport.InboundPipeline.forwardFragments(InboundPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">142</span>) at org.elasticsearch.transport.InboundPipeline.doHandleBytes(InboundPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">117</span>) at org.elasticsearch.transport.InboundPipeline.handleBytes(InboundPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">82</span>) at org.elasticsearch.transport.netty4.Netty4MessageChannelHandler.channelRead(Netty4MessageChannelHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">74</span>) at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">379</span>) at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">365</span>) at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">357</span>) at io.netty.handler.logging.LoggingHandler.channelRead(LoggingHandler.java<span class="hljs-punctuation">:</span><span class="hljs-number">271</span>) at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">379</span>) at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">365</span>) at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">357</span>) at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">1410</span>) at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">379</span>) at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">365</span>) at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java<span class="hljs-punctuation">:</span><span class="hljs-number">919</span>) at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java<span class="hljs-punctuation">:</span><span class="hljs-number">163</span>) at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">714</span>) at io.netty.channel.nio.NioEventLoop.processSelectedKeysPlain(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">615</span>) at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">578</span>) at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java<span class="hljs-punctuation">:</span><span class="hljs-number">493</span>) at io.netty.util.concurrent.SingleThreadEventExecutor$<span class="hljs-number">4.</span>run(SingleThreadEventExecutor.java<span class="hljs-punctuation">:</span><span class="hljs-number">989</span>) at io.netty.util.internal.ThreadExecutorMap$<span class="hljs-number">2.</span>run(ThreadExecutorMap.java<span class="hljs-punctuation">:</span><span class="hljs-number">74</span>) at __PATH__(Thread.java<span class="hljs-punctuation">:</span><span class="hljs-number">829</span>) Caused by<span class="hljs-punctuation">:</span> CircuitBreakingException<span class="hljs-punctuation">[</span><span class="hljs-punctuation">[</span>script<span class="hljs-punctuation">]</span> Too many dynamic script compilations within<span class="hljs-punctuation">,</span> max<span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>__PATH__<span class="hljs-punctuation">]</span>; please use indexed<span class="hljs-punctuation">,</span> or scripts with parameters instead; this limit can be changed by the <span class="hljs-punctuation">[</span>script.context.number_sort.max_compilations_rate<span class="hljs-punctuation">]</span> setting<span class="hljs-punctuation">]</span> at org.elasticsearch.script.ScriptCache.checkCompilationLimit(ScriptCache.java<span class="hljs-punctuation">:</span><span class="hljs-number">179</span>) at org.elasticsearch.script.ScriptCache.lambda$compile$<span class="hljs-number">0</span>(ScriptCache.java<span class="hljs-punctuation">:</span><span class="hljs-number">109</span>) at org.elasticsearch.common.cache.Cache.computeIfAbsent(Cache.java<span class="hljs-punctuation">:</span><span class="hljs-number">433</span>) at org.elasticsearch.script.ScriptCache.compile(ScriptCache.java<span class="hljs-punctuation">:</span><span class="hljs-number">99</span>) at org.elasticsearch.script.ScriptService.compile(ScriptService.java<span class="hljs-punctuation">:</span><span class="hljs-number">384</span>) at org.elasticsearch.index.query.QueryShardContext.compile(QueryShardContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">401</span>) at org.elasticsearch.search.sort.ScriptSortBuilder.fieldComparatorSource(ScriptSortBuilder.java<span class="hljs-punctuation">:</span><span class="hljs-number">380</span>) at org.elasticsearch.search.sort.ScriptSortBuilder.build(ScriptSortBuilder.java<span class="hljs-punctuation">:</span><span class="hljs-number">312</span>) at org.elasticsearch.search.sort.SortBuilder.buildSort(SortBuilder.java<span class="hljs-punctuation">:</span><span class="hljs-number">159</span>) at org.elasticsearch.search.SearchService.parseSource(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">906</span>) at org.elasticsearch.search.SearchService.createContext(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">726</span>) at org.elasticsearch.search.SearchService.executeQueryPhase(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">428</span>) at org.elasticsearch.search.SearchService.access$<span class="hljs-number">500</span>(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">141</span>) at org.elasticsearch.search.SearchService$<span class="hljs-number">2.</span>lambda$onResponse$<span class="hljs-number">0</span>(SearchService.java<span class="hljs-punctuation">:</span><span class="hljs-number">401</span>) at org.elasticsearch.action.ActionRunnable.lambda$supply$<span class="hljs-number">0</span>(ActionRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">58</span>) at org.elasticsearch.action.ActionRunnable$<span class="hljs-number">2.</span>doRun(ActionRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">73</span>) at org.elasticsearch.common.util.concurrent.AbstractRunnable.run(AbstractRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">37</span>) at org.elasticsearch.common.util.concurrent.TimedRunnable.doRun(TimedRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">44</span>) at org.elasticsearch.common.util.concurrent.ThreadContext$ContextPreservingAbstractRunnable.doRun(ThreadContext.java<span class="hljs-punctuation">:</span><span class="hljs-number">752</span>) at org.elasticsearch.common.util.concurrent.AbstractRunnable.run(AbstractRunnable.java<span class="hljs-punctuation">:</span><span class="hljs-number">37</span>) at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java<span class="hljs-punctuation">:</span><span class="hljs-number">1128</span>) at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java<span class="hljs-punctuation">:</span><span class="hljs-number">628</span>) at java.lang.Thread.run(Thread.java<span class="hljs-punctuation">:</span><span class="hljs-number">829</span>)<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>核心错误日志</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs java">Caused by: CircuitBreakingException[[script] Too many dynamic script compilations within, max: [__PATH__]; please use indexed, or scripts with parameters instead; <span class="hljs-built_in">this</span> limit can be changed by the [script.context.number_sort.max_compilations_rate] setting]<br></code></pre></td></tr></table></figure>
+
+<p>发现是ES出现了内存熔断——Script 编译熔断。由于在系统中有多个页面用到ES的检索，其中包含购物车推荐商品、推广详情页、商品详情推荐商品以及其他活动逻辑页配置的商品列表，而获取这些商品列表中有用到Script脚本去做复杂逻辑的脚本排序，而在ES中Script编译熔断的作用是<strong>限制一段时间内 Script 编译次数</strong>，而默认值是75&#x2F;5m( es第一次获取到script时会进行编译并缓存。Tips：使用 params 参数化脚本而不是写死到脚本中)，即5分钟编译75次，当超过75此后则抛出上面异常。</p>
+<p>查询出这个问题后，立马修改了script.context.number_sort.max_compilations_rate的值，后发现异常堆栈信息消失，异常解决。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>此次异常的出现是对【ES内存以及熔断】不够了解，ES基于保护机制而设置了多种熔断机制，其中包含：</p>
+<ul>
+<li>Field data 熔断器</li>
+<li>Request 熔断器</li>
+<li>In flight requests 熔断器</li>
+<li>Accounting requests 熔断器</li>
+<li>Script 编译熔断器</li>
+<li>Regex 熔断器</li>
+</ul>
+<p>详细可以查看：<a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_16164711/article/details/120709299">https://blog.csdn.net/qq_16164711/article/details/120709299</a></p>
+
+      </section>
+      <section class="extra">
+        
+          <ul class="copyright">
+  
+    <li><strong>本文作者：</strong>Ukza</li>
+    <li><strong>本文链接：</strong><a href="https://ukza.github.io/post/b146d7e0-901f-11ee-a21b-4d1d02b3c802.html" title="https:&#x2F;&#x2F;ukza.github.io&#x2F;post&#x2F;b146d7e0-901f-11ee-a21b-4d1d02b3c802.html">https:&#x2F;&#x2F;ukza.github.io&#x2F;post&#x2F;b146d7e0-901f-11ee-a21b-4d1d02b3c802.html</a></li>
+    <li><strong>版权声明：</strong>本博客所有文章均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" title="BY-NC-SA" target="_blank" rel="noopener">BY-NC-SA</a> 许可协议，转载请注明出处！</li>
+  
+</ul>
+        
+        
+        
+  <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Elastic-Search/" rel="tag">Elastic Search</a></li></ul> 
+
+        
+  <nav class="nav">
+    <a href="/post/2023/12/01-%E5%88%B7%E7%AE%97%E6%B3%95%E8%AE%B0%E5%BD%95.html"><i class="iconfont iconleft"></i>2023/12/01-刷算法记录</a>
+    <a href="/post/1f45aa00-901b-11ee-a594-b7c3b2bd0d34.html">Hello World<i class="iconfont iconright"></i></a>
+  </nav>
+
+      </section>
+      
+    </section>
+  </div>
+</article></div>
+      <div class="col-xl-3">
+        
+          
+  <aside class="toc-wrap">
+    <h3 class="toc-title">文章目录：</h3>
+    <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-text">背景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%92%E6%9F%A5%E6%80%9D%E8%B7%AF-%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-text">排查思路&#x2F;解决方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-text">总结</span></a></li></ol>
+  </aside>
+
+        
+      </div>
+    </div>
+  </div>
+</main>
+  
+
+<footer class="footer">
+  <div class="footer-social"></div>
+  
+    <div class="footer-copyright"><p>Powered by <a target="_blank" href="https://hexo.io">Hexo</a>  |  Theme - <a target="_blank" href="https://github.com/izhaoo/hexo-theme-zhaoo">zhaoo</a></p></div>
+  
+</footer>
+  
+      <div class="fab fab-plus">
+    <i class="iconfont iconplus"></i>
+  </div>
+  
+  
+  
+  <div class="fab fab-up">
+    <i class="iconfont iconcaret-up"></i>
+  </div>
+  
+  
+    <div class="scrollbar j-scrollbar">
+  <div class="scrollbar-current j-scrollbar-current"></div>
+</div>
+  
+  
+    
+<script src="/js/color-mode.js"></script>
+
+  
+  
+    <div class="search">
+  <div class="search-container">
+    <div class="search-close">
+      <i class="iconfont iconbaseline-close-px"></i>
+    </div>
+    <div class="search-input-wrapper">
+      <i class="search-input-icon iconfont iconsearch"></i>
+      <input class="search-input" type="search" id="search-input" placeholder="Search..." autofocus autocomplete="off"
+        autocorrect="off" autocapitalize="off">
+    </div>
+    <div class="search-output" id="search-output"></div>
+  </div>
+</div>
+  
+</body>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+
+
+
+
+  
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery.lazyload/1.9.1/jquery.lazyload.min.js"></script>
+
+
+
+
+  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+
+
+
+
+
+
+
+
+<script src="/js/utils.js"></script>
+<script src="/js/script.js"></script>
+
+
+
+
+
+
+
+  <script>
+    (function () {
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+      } else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+      }
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+</html>
