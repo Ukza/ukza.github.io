@@ -1,0 +1,789 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Ukza">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="复杂业务场景中的分布式事务处理场景，短暂牺牲数据一致性，并借助消息中间件进行柔性处理完成分布式事务问题">
+<meta property="og:type" content="article">
+<meta property="og:title" content="借助消息中间件进行柔性分布式事务的实现">
+<meta property="og:url" content="https://ukza.github.io/2025/03/08/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:site_name" content="Ukza&#39;s Blog">
+<meta property="og:description" content="复杂业务场景中的分布式事务处理场景，短暂牺牲数据一致性，并借助消息中间件进行柔性处理完成分布式事务问题">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ukza.github.io/img/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/1.png">
+<meta property="article:published_time" content="2025-03-08T05:30:27.000Z">
+<meta property="article:modified_time" content="2025-07-01T01:53:59.601Z">
+<meta property="article:author" content="Ukza">
+<meta property="article:tag" content="分布式事务">
+<meta property="article:tag" content="数据最终一致性">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://ukza.github.io/img/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/1.png">
+  
+  
+  
+  <title>借助消息中间件进行柔性分布式事务的实现 - Ukza&#39;s Blog</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/c/font_1749284_5i9bdhy70f8.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/c/font_1736178_k526ubmyhba.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"ukza.github.io","root":"/","version":"1.9.8","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":true,"baidu":null,"google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"leancloud":{"app_id":"9ohCC2UKNXnzpdi3Rj5RBMsC-gzGzoHsz","app_key":"mC53lWz9LLSOd2kyDGTYYufn","server_url":"https://9ohcc2uk.lc-cn-n1-shared.com","path":"window.location.pathname","ignore_local":false},"umami":{"src":null,"website_id":null,"domains":null,"start_time":"2024-01-01T00:00:00.000Z","token":null,"api_server":null}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+  
+
+
+
+  
+<meta name="generator" content="Hexo 7.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Ukza</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/" target="_self">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/" target="_self">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/" target="_self">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/" target="_self">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" target="_self" href="javascript:;" role="button"
+                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+              <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="https://hexo.fluid-dev.com/" target="_self">
+                    
+                    <span>主题博客</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="https://hexo.fluid-dev.com/docs/guide/" target="_self">
+                    
+                    <span>配置指南</span>
+                  </a>
+                
+                  
+                  
+                  
+                  <a class="dropdown-item" href="https://hexo.fluid-dev.com/docs/icon/" target="_self">
+                    
+                    <span>图标用法</span>
+                  </a>
+                
+              </div>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/1.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="借助消息中间件进行柔性分布式事务的实现"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2025-03-08 13:30" pubdate>
+          2025年3月8日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          1.4k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          12 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="leancloud-page-views-container" class="post-meta" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="leancloud-page-views"></span> 次
+        </span>
+        
+      
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">借助消息中间件进行柔性分布式事务的实现</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <hr>
+<h3 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h3><blockquote>
+<p>由于旧系统是基于nodejs进行业务代码编写且系统与系统之间的关联过于耦合，部分功能对业务交互不够友好、数据交互不够清晰，因此对功能进行重构迁移。</p>
+</blockquote>
+<p>现分析已有现状点如下：</p>
+<ol>
+<li>由于技术选型过于久远，数据存储类型选择了MongoDB版本为1.xxx，且不支持事务</li>
+<li>目前Nodejs数据更新只有单条数据更新接口，且是以更新时间为版本做乐观锁机制更新，如果操作成功，nodejs会返回完整的更新数据</li>
+<li>旧系统功能不完全舍弃，关闭在nodejs端对数据维护入口，迁移到Java体系进行数据维护时还要对Mongo数据进行维护，即双写一致</li>
+</ol>
+<h3 id="实现一"><a href="#实现一" class="headerlink" title="实现一"></a>实现一</h3><p>利用消息中间件的<strong>异步（不干扰业务流程）</strong>、<strong>消息可靠性</strong>对执行失败时已进行数据更新的mongo数据进行数据回滚，如果回退失败则进行<strong>告警</strong>、并进行<strong>人工数据补偿</strong>。具体实现流程图如下：<br><img src="/img/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/done_1.png" srcset="/img/loading.gif" lazyload></p>
+<p>如上所示在跨数据库类型上的分布式事务处理上，借助消息中间件进行柔性处理，其中主要依赖于消息中间件的异步、可靠性消息特性进行数据回滚，当回滚失败时则采用人工进行干扰处理。</p>
+<h3 id="实现二"><a href="#实现二" class="headerlink" title="实现二"></a>实现二</h3><p>在现有的场景中，多条数据的更新是采用循环调用nodejs接口进行数据更新，虽然nodejs借助了Feign进行重试兜底不需要考虑网络问题，但在多次Feign的调用下，整个接口响应速度并不理想（至少在800ms以上）。<br>其次是MySQL的执行顺序，必须确保nodejs所在的Feign调用成功才能进行数据操作，最后再根据操作结果再决定是否提交事务，异常了还需要回滚更新成功的Mongo数据。如果在Java端增加了其他业务性操作，比如价格更新的下沉，比如修改类目价格，连带修改到类目下的sku价格，执行失败时则发起MQ进行回滚。<br>如果对于Mongo数据的更新可以借助MQ进行异步，并将回滚的策略交于消费者自行处理，这种方式将促进Java端业务代码的高内聚，后续如果旧功能不再维护Mongo则只需要注释掉发送MQ相关代码即可<br><img src="/img/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/done_2.png" srcset="/img/loading.gif" lazyload></p>
+<p>如上所示，事务的提交在MQ消息发送成功后才执行的操作，Mongo数据的变更交由消息消费者处理。<br>在这个上示流程中，如果有其他Java项目进行交互：<br>则可以在流程中（即粉色事务范围内）进行Feign调用（不能导致长事务），Feign调用成功了 + 消息发送成功则提交事务。如果Feign调用失败则另写方法回滚数据，数据的回滚则可用乐观锁机制进行回滚。<br>或者（非强一致性、实时性比较低）发送MQ消息对其他逻辑进行处理，异常的处理与回滚失败则交由对应的消费者进行处理</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><h4 id="一-对于分布式事务的处理，要从以下方面进行考虑："><a href="#一-对于分布式事务的处理，要从以下方面进行考虑：" class="headerlink" title="一. 对于分布式事务的处理，要从以下方面进行考虑："></a>一. 对于分布式事务的处理，要从以下方面进行考虑：</h4><ul>
+<li>并发下正确数据的保证</li>
+<li>避免长事务</li>
+<li>异常处理策略</li>
+<li>回退失败的兜底</li>
+<li>节点宕机的处理</li>
+<li>考虑负载均衡</li>
+<li>网络延迟等等</li>
+</ul>
+<p>在本次面对的场景中，我只考虑事务【异常处理】、NodeJs更新失败或者MySQL更新失败时对已更新的Mongo数据进行数据回滚，在Mongo数据回滚失败则用【人工进行数据修复】</p>
+<p>未实现：节点宕机的处理、考虑负载均衡、网络延迟，下面是自己个人观点的处理：</p>
+<blockquote>
+<ol>
+<li>在节点宕机、网络延迟导致的数据响应丢失则可采用重试机制来进行处理，如果超过重试次数则人工干预</li>
+<li>负载均衡上则依赖现有的项目架构网关策略调整、Nginx特殊路径调整等</li>
+</ol>
+</blockquote>
+<h4 id="二-本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。"><a href="#二-本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。" class="headerlink" title="二. 本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。"></a>二. 本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。</h4><blockquote>
+<p>在实现一上，数据的准确性偏向于Mongo端，因为在目前场景中其他Nodejs项目有对价格数据的读取还是会读取Mongo端，而MySQL只负责数据的变更顺便同步到Mongo，数据读取的准确端是在Mongo，所以在实现上数据变更优先调用NodeJs再用消息中间件对异常场景的发生来回滚已经变更的Mongo数据。——继续维护旧功能<br>在实现二上，数据的准确性则偏向于MySQL端，优先保证Java端业务执行没有问题，后面再发送MQ更新Mongo数据，发送成功则提交MySQL事务。对于NodeJs更新数据异常则交由消费者进行处理，在发送异常并超过重试次数上则进行人工干预手动修改数据。——偏向于随弃用旧功能</p>
+</blockquote>
+<h4 id="三-尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理"><a href="#三-尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理" class="headerlink" title="三. 尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理"></a>三. 尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理</h4>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E6%8A%80%E6%9C%AF%E5%AD%A6%E4%B9%A0/" class="category-chain-item">技术学习</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/" class="print-no-link">#分布式事务</a>
+      
+        <a href="/tags/%E6%95%B0%E6%8D%AE%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7/" class="print-no-link">#数据最终一致性</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>借助消息中间件进行柔性分布式事务的实现</div>
+      <div>https://ukza.github.io/2025/03/08/借助消息中间件进行柔性分布式事务的实现/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Ukza</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2025年3月8日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-cc-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/12/01/Elastic%20Search%E4%B9%8BScript%E7%86%94%E6%96%AD%E5%BC%82%E5%B8%B8/" title="ElasticSearch之Script熔断异常">
+                        <span class="hidden-mobile">ElasticSearch之Script熔断异常</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  
+  
+    <article id="comments" lazyload>
+      
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"9ohCC2UKNXnzpdi3Rj5RBMsC-gzGzoHsz","appKey":"mC53lWz9LLSOd2kyDGTYYufn","path":"window.location.pathname","placeholder":"说点什么吧","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+    </article>
+  
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="leancloud-site-pv-container" style="display: none">
+        总访问量 
+        <span id="leancloud-site-pv"></span>
+         次
+      </span>
+    
+    
+      <span id="leancloud-site-uv-container" style="display: none">
+        总访问量 
+        <span id="leancloud-site-uv"></span>
+         人
+      </span>
+    
+    
+
+  
+
+</div>
+
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/5.0.0/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script defer src="/js/leancloud.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
