@@ -28,7 +28,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://ukza.github.io/img/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/1.png">
 <meta property="article:published_time" content="2025-03-08T05:30:27.000Z">
-<meta property="article:modified_time" content="2025-07-01T01:53:59.601Z">
+<meta property="article:modified_time" content="2025-07-01T02:15:05.316Z">
 <meta property="article:author" content="Ukza">
 <meta property="article:tag" content="分布式事务">
 <meta property="article:tag" content="数据最终一致性">
@@ -267,7 +267,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          1.4k 字
+          1.5k 字
         
       </span>
     
@@ -278,7 +278,7 @@
         
         
         
-          12 分钟
+          13 分钟
         
       </span>
     
@@ -363,7 +363,9 @@
 <h4 id="二-本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。"><a href="#二-本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。" class="headerlink" title="二. 本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。"></a>二. 本场景中是基于不同数据库类型做的双写一致，借助消息中间件进行柔性分布式事务处理，完成数据最终一致性。</h4><blockquote>
 <p>在实现一上，数据的准确性偏向于Mongo端，因为在目前场景中其他Nodejs项目有对价格数据的读取还是会读取Mongo端，而MySQL只负责数据的变更顺便同步到Mongo，数据读取的准确端是在Mongo，所以在实现上数据变更优先调用NodeJs再用消息中间件对异常场景的发生来回滚已经变更的Mongo数据。——继续维护旧功能<br>在实现二上，数据的准确性则偏向于MySQL端，优先保证Java端业务执行没有问题，后面再发送MQ更新Mongo数据，发送成功则提交MySQL事务。对于NodeJs更新数据异常则交由消费者进行处理，在发送异常并超过重试次数上则进行人工干预手动修改数据。——偏向于随弃用旧功能</p>
 </blockquote>
-<h4 id="三-尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理"><a href="#三-尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理" class="headerlink" title="三. 尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理"></a>三. 尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理</h4>
+<h4 id="三-尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理"><a href="#三-尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理" class="headerlink" title="三. 尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理"></a>三. 尽量避免分布式事务，如果能牺牲数据一致性达到最终一致性则进行选择柔性处理</h4><h3 id="学习参考"><a href="#学习参考" class="headerlink" title="学习参考"></a>学习参考</h3><h4 id="链接"><a href="#链接" class="headerlink" title="链接"></a>链接</h4><p><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/yXl-LpuwwIbGMcHJDgx0Gw">万字长文漫谈分布式事务实现原理</a><br><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/TAOF0y_QxJyIy8pbkjwFLw">一致性框架：供应链分布式事务问题解决方案｜得物技术</a></p>
+<h4 id="书籍"><a href="#书籍" class="headerlink" title="书籍"></a>书籍</h4><p><a href="/file/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Kafka%EF%BC%9A%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E8%B7%B5%E5%8E%9F%E7%90%86%5B%E6%9C%B1%E5%BF%A0%E5%8D%8E%5D.epub">深入理解Kafka：核心设计与实践原理[朱忠华]</a><br><a href="/file/%E5%80%9F%E5%8A%A9%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E8%BF%9B%E8%A1%8C%E6%9F%94%E6%80%A7%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%EF%BC%9A%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E6%88%98%E8%82%96%E5%AE%87%EF%BC%9B%E5%86%B0%E6%B2%B3.epub">深入理解分布式事务：原理与实战肖宇；冰河</a></p>
+
                 
               </div>
             
